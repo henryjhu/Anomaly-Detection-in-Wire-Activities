@@ -38,6 +38,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## **All the libraries used in this code**
 ```{r, echo=TRUE, message=FALSE}
+library(readr)
 library(easypackages)
 libraries("caret","caretEnsemble","caTools","class","cluster","data.tree","devtools","doSNOW","dplyr","e1071","factoextra","gbm","FNN","FSelector","ggalt","ggforce","ggfortify","ggplot2","gmodels","klaR","lattice","mlbench","modeest","nnet","neuralnet","outliers","parallel","psych","purrr","readr","rpart","rpart.plot","spatialEco","stats","tidyr","randomForest","ROSE","rsample","ROCR","pROC","glmnet","gridExtra","R6","Epi") 
 ```
@@ -45,20 +46,20 @@ libraries("caret","caretEnsemble","caTools","class","cluster","data.tree","devto
 ## **Import data into RStudio**
 
 ```{r, echo=TRUE, message=FALSE}
-# input_data <- read_delim("Final_cleaned_data.txt", ",", escape_double = FALSE, col_types = cols(
-#               TRANSACTION_ID = col_character(), 
-#               TRANSACTION_TIME = col_datetime(),
-#               TRXN_MONTH = col_character(),
-#               CLIENT_ID = col_character(), 
-#               COUNTRY_NAME = col_character(), 
-#               COUNTRY_CODE = col_character(), 
-#               CONTINENT_NAME = col_character(), 
-#               CONTINENT_CODE = col_character(), 
-#               SWIFT_MSG_TYPE = col_character(), 
-#               AVG_TRXN_AMT = col_double(),
-#               TRANSACTION_AMOUNT = col_double()   
-#               ),
-#     trim_ws = TRUE)
+input_data <- read_delim("Final_cleaned_data.txt", ",", escape_double = FALSE, col_types = cols(
+              TRANSACTION_ID = col_character(),
+              TRANSACTION_TIME = col_datetime(),
+              TRXN_MONTH = col_character(),
+              CLIENT_ID = col_character(),
+              COUNTRY_NAME = col_character(),
+              COUNTRY_CODE = col_character(),
+              CONTINENT_NAME = col_character(),
+              CONTINENT_CODE = col_character(),
+              SWIFT_MSG_TYPE = col_character(),
+              AVG_TRXN_AMT = col_double(),
+              TRANSACTION_AMOUNT = col_double()
+              ),
+    trim_ws = TRUE)
 ```
 
 
@@ -67,25 +68,37 @@ libraries("caret","caretEnsemble","caTools","class","cluster","data.tree","devto
 This sample data is for exploratory data analysis only.
 
 ```{r, echo=TRUE, message=FALSE}
+
+# Set random seed
+set.seed(42)
+
 # Sample the data
-# input_data_4M <- input_data_4M[sample(nrow(input_data), 4000000), ]
+# input_data_4M <- input_data[sample(nrow(input_data), 4000000), ]
 
 # Write data to storage
-# write.table(input_data_4M, file="sample_df_4M.txt", append = FALSE, sep = "\t", dec = ".", row.names = FALSE, col.names = TRUE)
+# write.table(input_data_4M, file="sample_df_4M.txt", append = FALSE, sep = ",", dec = ".", row.names = FALSE, col.names = TRUE)
+# write.csv(input_data_4M,"sample_df_4M.txt", row.names = FALSE)
+
+# Sample the data
+# input_data_100K <- input_data[sample(nrow(input_data), 100000), ]
+
+# Write data to storage
+# write.table(input_data_100K, file="sample_df_100K.txt", append = FALSE, sep = ",", dec = ".", row.names = FALSE, col.names = TRUE)
+# write.csv(input_data_100K,"sample_df_100K.txt", row.names = FALSE)
 
 # Load data into data frame
 input_data_eda <- read_delim("sample_df_4M.txt", ",", escape_double = FALSE, col_types = cols(
-              TRANSACTION_ID = col_character(), 
+              TRANSACTION_ID = col_character(),
               TRANSACTION_TIME = col_datetime(),
               TRXN_MONTH = col_character(),
-              CLIENT_ID = col_character(), 
-              COUNTRY_NAME = col_character(), 
-              COUNTRY_CODE = col_character(), 
-              CONTINENT_NAME = col_character(), 
-              CONTINENT_CODE = col_character(), 
-              SWIFT_MSG_TYPE = col_character(), 
+              CLIENT_ID = col_character(),
+              COUNTRY_NAME = col_character(),
+              COUNTRY_CODE = col_character(),
+              CONTINENT_NAME = col_character(),
+              CONTINENT_CODE = col_character(),
+              SWIFT_MSG_TYPE = col_character(),
               AVG_TRXN_AMT = col_double(),
-              TRANSACTION_AMOUNT = col_double()   
+              TRANSACTION_AMOUNT = col_double()
               ),
     trim_ws = TRUE)
 ```
@@ -96,10 +109,10 @@ This sample data is for plotting only.
 
 ```{r, echo=TRUE, message=FALSE}
 # Sample the data
-# input_data_100K <- input_data_100K[sample(nrow(input_data), 100000), ]
+# input_data_100K <- input_data[sample(nrow(input_data), 100000), ]
 
 # Write data to storage
-# write.table(input_data_100K, file="sample_df_100K.txt", append = FALSE, sep = "\t", dec = ".", row.names = FALSE, col.names = TRUE)
+# write.table(input_data_100K, file="sample_df_100K.txt", append = FALSE, sep = ",", dec = ".", row.names = FALSE, col.names = TRUE)
 
 # Load data into data frame
 input_data_plot <- read_delim("sample_df_100K.txt", ",", escape_double = FALSE, col_types = cols(
@@ -150,55 +163,67 @@ tail(input_data_eda)
 
 ```{r, echo=TRUE, message=FALSE}
 
-input_data_plot$TRANSACTION_AMOUNT=input_data_plot$TRANSACTION_AMOUNT/1000
+input_data_plot$AVG_TRXN_AMT=input_data_plot$AVG_TRXN_AMT/1000
 
 input_data_plot <- input_data_plot %>%
   mutate(MONTH_TEXT = case_when(
-    endsWith(TRXN_MONTH, "1") ~ "Jan",
-    endsWith(TRXN_MONTH, "2") ~ "Feb",
-    endsWith(TRXN_MONTH, "3") ~ "Mar",
-    endsWith(TRXN_MONTH, "4") ~ "Apr",
-    endsWith(TRXN_MONTH, "5") ~ "May",
-    endsWith(TRXN_MONTH, "6") ~ "Jun",
-    endsWith(TRXN_MONTH, "7") ~ "Jul",
-    endsWith(TRXN_MONTH, "8") ~ "Aug",
-    endsWith(TRXN_MONTH, "9") ~ "Sep",
-    endsWith(TRXN_MONTH, "10") ~ "Oct",
-    endsWith(TRXN_MONTH, "11") ~ "Nov",
-    endsWith(TRXN_MONTH, "12") ~ "Dec"
+          (TRXN_MONTH == "1") ~ "Jan",
+          (TRXN_MONTH == "2") ~ "Feb",
+          (TRXN_MONTH == "3") ~ "Mar",
+          (TRXN_MONTH == "4") ~ "Apr",
+          (TRXN_MONTH == "5") ~ "May",
+          (TRXN_MONTH == "6") ~ "Jun",
+          (TRXN_MONTH == "7") ~ "Jul",
+          (TRXN_MONTH == "8") ~ "Aug",
+          (TRXN_MONTH == "9") ~ "Sep",
+          (TRXN_MONTH == "10") ~ "Oct",
+          (TRXN_MONTH == "11") ~ "Nov",
+          (TRXN_MONTH == "12") ~ "Dec"
     ))
 
 NN_103_df <- input_data_plot[input_data_plot$CONTINENT_CODE	=='NN' & input_data_plot$SWIFT_MSG_TYPE=='103',]
+NN_103_df <- NN_103_df[,c(3,12,10)]
+NN_103_df = NN_103_df %>% distinct()
 NN_103_df$TRXN_MONTH = as.integer(NN_103_df$TRXN_MONTH)
 NN_103_df <- NN_103_df[order(NN_103_df$TRXN_MONTH),]
 glimpse(NN_103_df)
 dim(NN_103_df)
 
 NN_202_df <- input_data_plot[input_data_plot$CONTINENT_CODE	=='NN' & input_data_plot$SWIFT_MSG_TYPE=='202',]
+NN_202_df <- NN_202_df[,c(3,12,10)]
+NN_202_df = NN_202_df %>% distinct()
 NN_202_df$TRXN_MONTH = as.integer(NN_202_df$TRXN_MONTH)
 NN_202_df <- NN_202_df[order(NN_202_df$TRXN_MONTH),]
 glimpse(NN_202_df)
 dim(NN_202_df)
 
 EU_103_df <- input_data_plot[input_data_plot$CONTINENT_CODE	=='EU' & input_data_plot$SWIFT_MSG_TYPE=='103',]
+EU_103_df <- EU_103_df[,c(3,12,10)]
+EU_103_df = EU_103_df %>% distinct()
 EU_103_df$TRXN_MONTH = as.integer(EU_103_df$TRXN_MONTH)
 EU_103_df <- EU_103_df[order(EU_103_df$TRXN_MONTH),]
 glimpse(EU_103_df)
 dim(EU_103_df)
 
 EU_202_df <- input_data_plot[input_data_plot$CONTINENT_CODE	=='EU' & input_data_plot$SWIFT_MSG_TYPE=='202',]
+EU_202_df <- EU_202_df[,c(3,12,10)]
+EU_202_df = EU_202_df %>% distinct()
 EU_202_df$TRXN_MONTH = as.integer(EU_202_df$TRXN_MONTH)
 EU_202_df <- EU_202_df[order(EU_202_df$TRXN_MONTH),]
 head(EU_202_df)
 dim(EU_202_df)
 
 AS_103_df <- input_data_plot[input_data_plot$CONTINENT_CODE	=='AS' & input_data_plot$SWIFT_MSG_TYPE=='103',]
+AS_103_df <- AS_103_df[,c(3,12,10)]
+AS_103_df = AS_103_df %>% distinct()
 AS_103_df$TRXN_MONTH = as.integer(AS_103_df$TRXN_MONTH)
 AS_103_df <- AS_103_df[order(AS_103_df$TRXN_MONTH),]
 glimpse(AS_103_df)
 dim(AS_103_df)
 
 AS_202_df <- input_data_plot[input_data_plot$CONTINENT_CODE	=='AS' & input_data_plot$SWIFT_MSG_TYPE=='202',]
+AS_202_df <- AS_202_df[,c(3,12,10)]
+AS_202_df = AS_202_df %>% distinct()
 AS_202_df$TRXN_MONTH = as.integer(AS_202_df$TRXN_MONTH)
 AS_202_df <- AS_202_df[order(AS_202_df$TRXN_MONTH),]
 glimpse(AS_202_df)
@@ -242,70 +267,70 @@ library(ggplot2)
 options(repr.plot.width = 15, repr.plot.height = 10)
 
 NN_103_df$MONTH_TEXT <-  factor(NN_103_df$MONTH_TEXT, levels=unique(NN_103_df$MONTH_TEXT))
-ggplot(NN_103_df, aes(x = MONTH_TEXT, y = TRANSACTION_AMOUNT)) + 
-geom_bar(stat = "summary", fun = "mean", fill='#5DADE2', color="#000000") +
-ggtitle("North America MT103 Monthly Average Transaction Amount") +
+ggplot(NN_103_df) + 
+geom_bar( aes(x = MONTH_TEXT, y = AVG_TRXN_AMT), stat = "identity", fill='#5DADE2', color="#000000") +
+geom_line(aes(x = MONTH_TEXT, y = AVG_TRXN_AMT), size = 1.5, color="green", group = 1) +
+ggtitle("North America MT103 Monthly Median Transaction Amount") +
 xlab("Month") +
 ylab("Average Transaction Amount (Thousands)") +
-theme(axis.text=element_text(size=10),
-      axis.title = element_text(size=10),
-      plot.title = element_text(hjust = 0.5, size=15,face="bold"),
-      legend.key.size = unit(1,"line"))
+theme(axis.text=element_text(size=12),
+      axis.title = element_text(size=12),
+      plot.title = element_text(hjust = 0.5, size=15,face="bold"))
 
 NN_202_df$MONTH_TEXT <-  factor(NN_202_df$MONTH_TEXT, levels=unique(NN_202_df$MONTH_TEXT))
-ggplot(NN_202_df, aes(x = MONTH_TEXT, y = TRANSACTION_AMOUNT)) + 
-geom_bar(stat = "summary", fun = "mean", fill='#5DADE2', color="#000000") +
-ggtitle("North America MT202 Monthly Average Transaction Amount") +
+ggplot(NN_202_df) + 
+geom_bar( aes(x = MONTH_TEXT, y = AVG_TRXN_AMT), stat = "identity", fill='#5DADE2', color="#000000") +
+geom_line(aes(x = MONTH_TEXT, y = AVG_TRXN_AMT), size = 1.5, color="green", group = 1) +
+ggtitle("North America MT202 Monthly Median Transaction Amount") +
 xlab("Month") +
 ylab("Average Transaction Amount (Thousands)") +
-theme(axis.text=element_text(size=10),
-      axis.title = element_text(size=10),
-      plot.title = element_text(hjust = 0.5, size=15,face="bold"),
-      legend.key.size = unit(1,"line")) 
+theme(axis.text=element_text(size=12),
+      axis.title = element_text(size=12),
+      plot.title = element_text(hjust = 0.5, size=15,face="bold"))
 
-EU_103_df$MONTH_TEXT <-  factor(EU_103_df$MONTH_TEXT, levels=unique(EU_103_df$MONTH_TEXT))
-ggplot(EU_103_df, aes(x = MONTH_TEXT, y = TRANSACTION_AMOUNT)) + 
-geom_bar(stat = "summary", fun = "mean", fill='#5DADE2', color="#000000") +
-ggtitle("Europe MT103 Monthly Average Transaction Amount") +
+EU_103_df$MONTH_TEXT <-  factor(EU_103_df$MONTH_TEXT, levels=unique(EU_103_df$MONTH_TEXT)) 
+ggplot(EU_103_df) + 
+geom_bar( aes(x = MONTH_TEXT, y = AVG_TRXN_AMT), stat = "identity", fill='#5DADE2', color="#000000") +
+geom_line(aes(x = MONTH_TEXT, y = AVG_TRXN_AMT), size = 1.5, color="green", group = 1) +
+ggtitle("Europe MT103 Monthly Median Transaction Amount") +
 xlab("Month") +
 ylab("Average Transaction Amount (Thousands)") +
-theme(axis.text=element_text(size=10),
-      axis.title = element_text(size=10),
-      plot.title = element_text(hjust = 0.5, size=15,face="bold"),
-      legend.key.size = unit(1,"line")) 
+theme(axis.text=element_text(size=12),
+      axis.title = element_text(size=12),
+      plot.title = element_text(hjust = 0.5, size=15,face="bold"))
 
-EU_202_df$MONTH_TEXT <-  factor(EU_202_df$MONTH_TEXT, levels=unique(EU_202_df$MONTH_TEXT))
-ggplot(EU_202_df, aes(x = MONTH_TEXT, y = TRANSACTION_AMOUNT)) + 
-geom_bar(stat = "summary", fun = "mean", fill='#5DADE2', color="#000000") +
-ggtitle("Europe MT202 Monthly Average Transaction Amount") +
+EU_202_df$MONTH_TEXT <-  factor(EU_202_df$MONTH_TEXT, levels=unique(EU_202_df$MONTH_TEXT)) 
+ggplot(EU_202_df) + 
+geom_bar( aes(x = MONTH_TEXT, y = AVG_TRXN_AMT), stat = "identity", fill='#5DADE2', color="#000000") +
+geom_line(aes(x = MONTH_TEXT, y = AVG_TRXN_AMT), size = 1.5, color="green", group = 1) +
+ggtitle("Europe MT202 Monthly Median Transaction Amount") +
 xlab("Month") +
 ylab("Average Transaction Amount (Thousands)") +
-theme(axis.text=element_text(size=10),
-      axis.title = element_text(size=10),
-      plot.title = element_text(hjust = 0.5, size=15,face="bold"),
-      legend.key.size = unit(1,"line")) 
+theme(axis.text=element_text(size=12),
+      axis.title = element_text(size=12),
+      plot.title = element_text(hjust = 0.5, size=15,face="bold"))
 
 AS_103_df$MONTH_TEXT <-  factor(AS_103_df$MONTH_TEXT, levels=unique(AS_103_df$MONTH_TEXT))
-ggplot(AS_103_df, aes(x = MONTH_TEXT, y = TRANSACTION_AMOUNT)) + 
-geom_bar(stat = "summary", fun = "mean", fill='#5DADE2', color="#000000") +
-ggtitle("Asia MT103 Monthly Average Transaction Amount") +
+ggplot(AS_103_df) + 
+geom_bar( aes(x = MONTH_TEXT, y = AVG_TRXN_AMT), stat = "identity", fill='#5DADE2', color="#000000") +
+geom_line(aes(x = MONTH_TEXT, y = AVG_TRXN_AMT), size = 1.5, color="green", group = 1) +
+ggtitle("Asia MT103 Monthly Median Transaction Amount") +
 xlab("Month") +
 ylab("Average Transaction Amount (Thousands)") +
-theme(axis.text=element_text(size=10),
-      axis.title = element_text(size=10),
-      plot.title = element_text(hjust = 0.5, size=15,face="bold"),
-      legend.key.size = unit(1,"line"))  
+theme(axis.text=element_text(size=12),
+      axis.title = element_text(size=12),
+      plot.title = element_text(hjust = 0.5, size=15,face="bold"))
 
 AS_202_df$MONTH_TEXT <-  factor(AS_202_df$MONTH_TEXT, levels=unique(AS_202_df$MONTH_TEXT))
-ggplot(AS_202_df, aes(x = MONTH_TEXT, y = TRANSACTION_AMOUNT)) + 
-geom_bar(stat = "summary", fun = "mean", fill='#5DADE2', color="#000000") +
-ggtitle("Asia MT202 Monthly Average Transaction Amount") +
+ggplot(AS_202_df) + 
+geom_bar( aes(x = MONTH_TEXT, y = AVG_TRXN_AMT), stat = "identity", fill='#5DADE2', color="#000000") +
+geom_line(aes(x = MONTH_TEXT, y = AVG_TRXN_AMT), size = 1.5, color="green", group = 1) +
+ggtitle("Asia MT202 Monthly Median Transaction Amount") +
 xlab("Month") +
 ylab("Average Transaction Amount  (Thousands)") +
-theme(axis.text=element_text(size=10),
-      axis.title = element_text(size=10),
-      plot.title = element_text(hjust = 0.5, size=15,face="bold"),
-      legend.key.size = unit(1,"line"))  
+theme(axis.text=element_text(size=12),
+      axis.title = element_text(size=12),
+      plot.title = element_text(hjust = 0.5, size=15,face="bold"))
 
 ```
 
@@ -316,35 +341,37 @@ library(ggplot2)
 
 input_data_eda <- input_data_eda %>%
   mutate(MONTH_TEXT = case_when(
-    endsWith(TRXN_MONTH, "1") ~ "Jan",
-    endsWith(TRXN_MONTH, "2") ~ "Feb",
-    endsWith(TRXN_MONTH, "3") ~ "Mar",
-    endsWith(TRXN_MONTH, "4") ~ "Apr",
-    endsWith(TRXN_MONTH, "5") ~ "May",
-    endsWith(TRXN_MONTH, "6") ~ "Jun",
-    endsWith(TRXN_MONTH, "7") ~ "Jul",
-    endsWith(TRXN_MONTH, "8") ~ "Aug",
-    endsWith(TRXN_MONTH, "9") ~ "Sep",
-    endsWith(TRXN_MONTH, "10") ~ "Oct",
-    endsWith(TRXN_MONTH, "11") ~ "Nov",
-    endsWith(TRXN_MONTH, "12") ~ "Dec"
+          (TRXN_MONTH == "1") ~ "Jan",
+          (TRXN_MONTH == "2") ~ "Feb",
+          (TRXN_MONTH == "3") ~ "Mar",
+          (TRXN_MONTH == "4") ~ "Apr",
+          (TRXN_MONTH == "5") ~ "May",
+          (TRXN_MONTH == "6") ~ "Jun",
+          (TRXN_MONTH == "7") ~ "Jul",
+          (TRXN_MONTH == "8") ~ "Aug",
+          (TRXN_MONTH == "9") ~ "Sep",
+          (TRXN_MONTH == "10") ~ "Oct",
+          (TRXN_MONTH == "11") ~ "Nov",
+          (TRXN_MONTH == "12") ~ "Dec"
     ))
 
+
+input_data_eda <- input_data_eda[,c(3,12,10)]
+input_data_eda = input_data_eda %>% distinct()
 input_data_eda$TRXN_MONTH = as.integer(input_data_eda$TRXN_MONTH)
 input_data_eda <- input_data_eda[order(input_data_eda$TRXN_MONTH),]
 input_data_eda$MONTH_TEXT <-  factor(input_data_eda$MONTH_TEXT, levels=unique(input_data_eda$MONTH_TEXT))
-input_data_eda$TRANSACTION_AMOUNT=input_data_eda$TRANSACTION_AMOUNT/1000
+input_data_eda$AVG_TRXN_AMT=input_data_eda$AVG_TRXN_AMT/1000
 
 options(repr.plot.width = 15, repr.plot.height = 10)
-ggplot(input_data_eda, aes(x = MONTH_TEXT, y = TRANSACTION_AMOUNT)) + 
-geom_bar(stat = "summary", fun = "mean", fill='#5DADE2', color="#000000") +
-ggtitle("Monthly Average Transaction Amount") +
+ggplot(input_data_eda, aes(x = MONTH_TEXT, y = AVG_TRXN_AMT)) + 
+geom_bar(stat = "summary", fun="mean", fill='#5DADE2', color="#000000") +
+ggtitle("Monthly Median Transaction Amount") +
 xlab("Month") +
 ylab("Transaction Amount (Thousands)") +
-theme(axis.text=element_text(size=10),
-      axis.title = element_text(size=10),
-      plot.title = element_text(hjust = 0.5, size=15,face="bold"),
-      legend.key.size = unit(1,"line"))
+theme(axis.text=element_text(size=12),
+      axis.title = element_text(size=12),
+      plot.title = element_text(hjust = 0.5, size=15,face="bold"))
 ```
 
 ## **Process Runtime**
