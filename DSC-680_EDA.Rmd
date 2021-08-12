@@ -15,7 +15,7 @@ research organization. The experience must provide students the opportunity to c
 
 <b>Purpose:</b><br>
 Carry out exploratory data analysis on a set of random sample data extracted for machine learning.<br>
-<b>Universtiy Name:</b> Utica College <br>
+<b>University Name:</b> Utica College <br>
 <b>Course Name:</b> DSC-680-Z1 Research Practicum <br>
 <b>Student Name:</b> Henry J. Hu <br>
 <b>Program Director Name:</b> Dr. McCarthy, Michael <br>
