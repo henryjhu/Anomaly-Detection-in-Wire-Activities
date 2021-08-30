@@ -1,0 +1,363 @@
+---
+title: '**DSC-680-Z1 Research Practicum** <br> Exploratory Data Analysis'
+output:
+  html_document:
+    highlight: null
+    mathjax: null
+    prettydoc::html_pretty: default
+    theme: null
+  pdf_document: default
+  word_document: default
+---
+## **Project Description**
+The research practicum involves on-site experiential learning in a research setting. This setting may be in the private or public sector, it may include such locations as education, governmental, non-governmental, or general
+research organization. The experience must provide students the opportunity to collect and analyze data, consider ethical implications of research, and draw empirically grounded conclusions.
+
+<b>Purpose:</b><br>
+Carry out exploratory data analysis on a set of random sample data extracted for machine learning.<br>
+<b>University Name:</b> Utica College <br>
+<b>Course Name:</b> DSC-680-Z1 Research Practicum <br>
+<b>Student Name:</b> Henry J. Hu <br>
+<b>Program Director Name:</b> Dr. McCarthy, Michael <br>
+<b>Runtime Environment:</b> RStudio<br>
+<b>Programming Language:</b> R <br>
+<b>Original Data Frame:</b>
+12,705,553 international wires belonging to 139 customers from 3 continents for the entire year of 2020.<br>
+<b> Last Update:</b> July 21st, 2021
+
+## **Clearing R Studio Memory Usage**
+
+```{r, echo=TRUE, message=FALSE}
+gc()
+rm(list = ls())
+```
+
+## **Time Counter Start**
+```{r, echo=TRUE, message=FALSE}
+start_time <- Sys.time()
+```
+
+## **Include the knitr package for integration of R code into Markdown**
+
+```{r, echo = TRUE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## **All the libraries used in this code**
+```{r, echo=TRUE, message=FALSE}
+library(readr)
+library(easypackages)
+libraries("caret","caretEnsemble","caTools","class","cluster","data.tree","devtools","doSNOW","dplyr","e1071","factoextra","gbm","FNN","FSelector","ggalt","ggforce","ggfortify","ggplot2","gmodels","klaR","lattice","mlbench","modeest","nnet","neuralnet","outliers","parallel","psych","purrr","readr","rpart","rpart.plot","spatialEco","stats","tidyr","randomForest","ROSE","rsample","ROCR","pROC","glmnet","gridExtra","R6","Epi") 
+```
+
+## **Import data into RStudio**
+
+```{r, echo=TRUE, message=FALSE}
+# input_data <- read_delim("Final_cleaned_data.txt", ",", escape_double = FALSE, col_types = cols(
+#               TRANSACTION_ID = col_character(),
+#               TRANSACTION_TIME = col_datetime(),
+#               TRXN_MONTH = col_character(),
+#               CLIENT_ID = col_character(),
+#               COUNTRY_NAME = col_character(),
+#               COUNTRY_CODE = col_character(),
+#               CONTINENT_NAME = col_character(),
+#               CONTINENT_CODE = col_character(),
+#               SWIFT_MSG_TYPE = col_character(),
+#               AVG_TRXN_AMT = col_double(),
+#               TRANSACTION_AMOUNT = col_double()
+#               ),
+#     trim_ws = TRUE)
+```
+
+
+## **Data Sampling**
+
+```{r, echo=TRUE, message=FALSE}
+
+# Set random seed
+set.seed(42)
+
+# Sample the data
+# input_data_4M <- input_data[sample(nrow(input_data), 4000000), ]
+
+# Write data to storage
+# write.table(input_data_4M, file="sample_df_4M.txt", append = FALSE, sep = ",", dec = ".", row.names = FALSE, col.names = TRUE)
+# write.csv(input_data_4M,"sample_df_4M.txt", row.names = FALSE)
+
+# Load data into data frame
+input_data_eda <- read_delim("sample_df_4M.txt", ",", escape_double = FALSE, col_types = cols(
+                TRANSACTION_ID = col_character(),
+                TRANSACTION_TIME = col_datetime(),
+                TRXN_MONTH = col_integer(),
+                CLIENT_ID = col_character(),
+                COUNTRY_NAME = col_character(),
+                COUNTRY_CODE = col_character(),
+                CONTINENT_NAME = col_character(),
+                CONTINENT_CODE = col_character(),
+                SWIFT_MSG_TYPE = col_character(),
+                AVG_TRXN_AMT = col_double(),
+                TRANSACTION_AMOUNT = col_double()
+              ),
+    trim_ws = TRUE)
+```
+
+## **Numeric/character field separator**
+
+```{r, echo=TRUE, message=FALSE}
+num.names <- input_data_eda %>% select_if(is.numeric) %>% colnames()
+ch.names <- input_data_eda %>% select_if(is.character) %>% colnames()
+```
+
+## **Descriptive Statistics** 
+
+These descriptive statistics reveal both the central tendency and dispersion tendency of the sample data for machine learning.
+
+### **Dimension of data frame**
+```{r, echo=TRUE, message=FALSE}
+dim(input_data_eda)
+```
+### **Structure of data frame** 
+```{r, echo=TRUE, message=FALSE}
+str(input_data_eda)
+```
+### **Summary statistics of data frame**
+```{r, echo=TRUE, message=FALSE}
+summary(input_data_eda)
+```
+### **Mode of each variable**
+```{r, echo=TRUE, message=FALSE}
+lapply(input_data_eda[,num.names],mfv)
+```
+### **Variance of each variable**
+```{r, echo=TRUE, message=FALSE}
+lapply(input_data_eda[,num.names],var)
+```
+### **Standard deviation of each variable**
+```{r, echo=TRUE, message=FALSE}
+lapply(input_data_eda[,num.names],sd)
+```
+### **Glimpse of data frame** 
+```{r, echo=TRUE, message=FALSE}
+glimpse(input_data_eda)
+```
+### **Head of data frame** 
+```{r, echo=TRUE, message=FALSE}
+head(input_data_eda)
+```
+### **Tail of data frame**
+```{r, echo=TRUE, message=FALSE}
+tail(input_data_eda)
+```
+
+## **Correlation plot**
+```{r p1, echo=TRUE, message=FALSE}
+oldw <- getOption("warn")
+options(warn = -1)
+pairs.panels(input_data_eda[,num.names],gap=0,bg=c("green","red","yellow","blue","pink","purple"),pch=21)
+options(warn = oldw)
+```
+
+## **Segregate and prepare data for bar plots** 
+
+```{r, echo=TRUE, message=FALSE}
+
+input_data_eda$AVG_TRXN_AMT=input_data_eda$AVG_TRXN_AMT/1000
+
+input_data_eda <- input_data_eda %>%
+  mutate(
+          MONTH_TEXT = 
+           case_when(
+                      TRXN_MONTH == 1 ~ "Jan",
+                      TRXN_MONTH == 2 ~ "Feb",
+                      TRXN_MONTH == 3 ~ "Mar",
+                      TRXN_MONTH == 4 ~ "Apr",
+                      TRXN_MONTH == 5 ~ "May",
+                      TRXN_MONTH == 6 ~ "Jun",
+                      TRXN_MONTH == 7 ~ "Jul",
+                      TRXN_MONTH == 8 ~ "Aug",
+                      TRXN_MONTH == 9 ~ "Sep",
+                      TRXN_MONTH == 10 ~ "Oct",
+                      TRXN_MONTH == 11 ~ "Nov",
+                      TRXN_MONTH == 12 ~ "Dec"
+                    )
+         )
+
+NN_103_df <- input_data_eda[input_data_eda$CONTINENT_CODE	=='NN' & input_data_eda$SWIFT_MSG_TYPE=='103',]
+NN_103_df <- NN_103_df[,c(3,10,12)]
+NN_103_df = NN_103_df %>% distinct()
+NN_103_df <- NN_103_df[order(NN_103_df$TRXN_MONTH),]
+glimpse(NN_103_df)
+dim(NN_103_df)
+
+NN_202_df <- input_data_eda[input_data_eda$CONTINENT_CODE	=='NN' & input_data_eda$SWIFT_MSG_TYPE=='202',]
+NN_202_df <- NN_202_df[,c(3,10,12)]
+NN_202_df = NN_202_df %>% distinct()
+NN_202_df <- NN_202_df[order(NN_202_df$TRXN_MONTH),]
+glimpse(NN_202_df)
+dim(NN_202_df)
+
+EU_103_df <- input_data_eda[input_data_eda$CONTINENT_CODE	=='EU' & input_data_eda$SWIFT_MSG_TYPE=='103',]
+EU_103_df <- EU_103_df[,c(3,10,12)]
+EU_103_df = EU_103_df %>% distinct()
+EU_103_df <- EU_103_df[order(EU_103_df$TRXN_MONTH),]
+glimpse(EU_103_df)
+dim(EU_103_df)
+
+EU_202_df <- input_data_eda[input_data_eda$CONTINENT_CODE	=='EU' & input_data_eda$SWIFT_MSG_TYPE=='202',]
+EU_202_df <- EU_202_df[,c(3,10,12)]
+EU_202_df = EU_202_df %>% distinct()
+EU_202_df <- EU_202_df[order(EU_202_df$TRXN_MONTH),]
+glimpse(EU_202_df)
+dim(EU_202_df)
+
+AS_103_df <- input_data_eda[input_data_eda$CONTINENT_CODE	=='AS' & input_data_eda$SWIFT_MSG_TYPE=='103',]
+AS_103_df <- AS_103_df[,c(3,10,12)]
+AS_103_df = AS_103_df %>% distinct()
+AS_103_df <- AS_103_df[order(AS_103_df$TRXN_MONTH),]
+glimpse(AS_103_df)
+dim(AS_103_df)
+
+AS_202_df <- input_data_eda[input_data_eda$CONTINENT_CODE	=='AS' & input_data_eda$SWIFT_MSG_TYPE=='202',]
+AS_202_df <- AS_202_df[,c(3,10,12)]
+AS_202_df = AS_202_df %>% distinct()
+AS_202_df <- AS_202_df[order(AS_202_df$TRXN_MONTH),]
+glimpse(AS_202_df)
+dim(AS_202_df)
+```
+
+## **Bar Plot**
+
+These bar plots reveal the monthly median transaction amounts for each cohort of continent, SWIFT message type and month. 
+
+```{r p4, echo=TRUE, message=FALSE}
+library(ggplot2)
+
+options(repr.plot.width = 15, repr.plot.height = 10)
+
+AS_103_df$MONTH_TEXT <- factor(AS_103_df$MONTH_TEXT, levels =AS_103_df$MONTH_TEXT)
+ggplot(AS_103_df) +
+geom_bar( aes(x = MONTH_TEXT, y = AVG_TRXN_AMT), stat = "identity", fill='#5DADE2', color="#000000") +
+geom_line(aes(x = MONTH_TEXT, y = AVG_TRXN_AMT), size = 1.5, color="green", group = 1) +
+ggtitle("Asia MT103 Monthly Median Transaction Amount") +
+xlab("Month") +
+ylab("Median Transaction Amount (Thousands)") +
+theme(axis.text=element_text(size=12),
+      axis.title = element_text(size=12),
+      plot.title = element_text(hjust = 0.5, size=15,face="bold"))
+
+AS_202_df$MONTH_TEXT <- factor(AS_202_df$MONTH_TEXT, levels =AS_202_df$MONTH_TEXT)
+ggplot(AS_202_df) +
+geom_bar( aes(x = MONTH_TEXT, y = AVG_TRXN_AMT), stat = "identity", fill='#5DADE2', color="#000000") +
+geom_line(aes(x = MONTH_TEXT, y = AVG_TRXN_AMT), size = 1.5, color="green", group = 1) +
+ggtitle("Asia MT202 Monthly Median Transaction Amount") +
+xlab("Month") +
+ylab("Median Transaction Amount  (Thousands)") +
+theme(axis.text=element_text(size=12),
+      axis.title = element_text(size=12),
+      plot.title = element_text(hjust = 0.5, size=15,face="bold"))
+
+EU_103_df$MONTH_TEXT <- factor(EU_103_df$MONTH_TEXT, levels =EU_103_df$MONTH_TEXT)
+ggplot(EU_103_df) +
+geom_bar( aes(x = MONTH_TEXT, y = AVG_TRXN_AMT), stat = "identity", fill='#5DADE2', color="#000000") +
+geom_line(aes(x = MONTH_TEXT, y = AVG_TRXN_AMT), size = 1.5, color="green", group = 1) +
+ggtitle("Europe MT103 Monthly Median Transaction Amount") +
+xlab("Month") +
+ylab("Median Transaction Amount (Thousands)") +
+theme(axis.text=element_text(size=12),
+      axis.title = element_text(size=12),
+      plot.title = element_text(hjust = 0.5, size=15,face="bold"))
+
+EU_202_df$MONTH_TEXT <- factor(EU_202_df$MONTH_TEXT, levels =EU_202_df$MONTH_TEXT)
+ggplot(EU_202_df) +
+geom_bar( aes(x = MONTH_TEXT, y = AVG_TRXN_AMT), stat = "identity", fill='#5DADE2', color="#000000") +
+geom_line(aes(x = MONTH_TEXT, y = AVG_TRXN_AMT), size = 1.5, color="green", group = 1) +
+ggtitle("Europe MT202 Monthly Median Transaction Amount") +
+xlab("Month") +
+ylab("Median Transaction Amount (Thousands)") +
+theme(axis.text=element_text(size=12),
+      axis.title = element_text(size=12),
+      plot.title = element_text(hjust = 0.5, size=15,face="bold"))
+
+NN_103_df$MONTH_TEXT <- factor(NN_103_df$MONTH_TEXT, levels =NN_103_df$MONTH_TEXT)
+ggplot(NN_103_df) +
+geom_bar( aes(x = MONTH_TEXT, y = AVG_TRXN_AMT), stat = "identity", fill='#5DADE2', color="#000000") +
+geom_line(aes(x = MONTH_TEXT, y = AVG_TRXN_AMT), size = 1.5, color="green", group = 1) +
+ggtitle("North America MT103 Monthly Median Transaction Amount") +
+xlab("Month") +
+ylab("Median Transaction Amount (Thousands)") +
+theme(axis.text=element_text(size=12),
+      axis.title = element_text(size=12),
+      plot.title = element_text(hjust = 0.5, size=15,face="bold"))
+
+NN_202_df$MONTH_TEXT <- factor(NN_202_df$MONTH_TEXT, levels =NN_202_df$MONTH_TEXT)
+ggplot(NN_202_df) +
+geom_bar( aes(x = MONTH_TEXT, y = AVG_TRXN_AMT), stat = "identity", fill='#5DADE2', color="#000000") +
+geom_line(aes(x = MONTH_TEXT, y = AVG_TRXN_AMT), size = 1.5, color="green", group = 1) +
+ggtitle("North America MT202 Monthly Median Transaction Amount") +
+xlab("Month") +
+ylab("Median Transaction Amount (Thousands)") +
+theme(axis.text=element_text(size=12),
+      axis.title = element_text(size=12),
+      plot.title = element_text(hjust = 0.5, size=15,face="bold"))
+
+```
+
+## **Is the data normally distributed?**
+
+```{r p5, echo=TRUE, message=FALSE}
+library(ggplot2)
+
+input_data_eda <- as.data.frame(lapply(input_data_eda, function(x) if(is.numeric(x) && is.na(x)){
+  mean(x, na.rm = TRUE)
+} else { if(is.character(x) && is.na(x)){x = "NA"} else x }
+))
+
+input_data_eda$TRANSACTION_AMOUNT <- input_data_eda$TRANSACTION_AMOUNT/1000000
+
+# hist(input_data_eda$TRANSACTION_AMOUNT, main = "Transaction Amount Frequency Distribution", xlab="Transaction Amount Range (Thousands)")
+
+options(repr.plot.width = 15, repr.plot.height = 10)
+ggplot(data = data.frame(input_data_eda$TRANSACTION_AMOUNT), aes(x=input_data_eda$TRANSACTION_AMOUNT)) + geom_histogram(alpha=0.6, bin =50, fill='#5DADE2', color="#000000") + 
+xlim(1,18000) + # Removing extreme outlier transaction amount of 0.02
+coord_cartesian(ylim=c(0,25000)) +
+ggtitle("Transaction Amount Frequency Distribution") +
+xlab("Transaction Amount Range (Millions)") +
+ylab("Frequency") +
+theme(axis.text=element_text(size=12),
+      axis.title = element_text(size=12),
+      plot.title = element_text(hjust = 0.5, size=15,face="bold"))
+```
+
+## **Pie Chart**
+
+North America has the most number of wire tranfers.
+
+```{r p3, echo=TRUE, message=FALSE}
+
+  library(plotly)
+
+  input_data_eda$pie_count = 1
+
+  input_data_eda$CONTINENT_NAME <-  as.factor(input_data_eda$CONTINENT_NAME)
+
+  plot_ly(input_data_eda,
+          labels = ~CONTINENT_NAME,
+          values = ~pie_count,
+          type = 'pie',
+          textposition = 'inside',
+          textinfo = 'label+percent',
+          insidetextfont = list(color = '#FFFFFF'),
+          marker = list(colors = colors,line = list(color = '#FFFFFF', width = 2)),
+          showlegend = TRUE)  %>%
+  layout(title='<b>Transaction % by Continent</b>',
+         xaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE),
+         yaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE))
+```
+
+## **Process Runtime**
+
+```{r, echo=TRUE, message=FALSE}
+end_time <- Sys.time()
+end_time - start_time
+```
+
